@@ -205,7 +205,7 @@ First, let's create an empty data frame scaffold to be populated by the results 
 ```{r}
 nematode_meancv <- data.frame(variable = rep(NA, 26),
                               mean = rep(NA, 26),
-                              CV = rep(NA, 26)
+                              cv = rep(NA, 26)
                               )
 
 nematode_meancv
