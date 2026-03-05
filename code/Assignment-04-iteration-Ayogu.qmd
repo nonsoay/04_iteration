@@ -1,0 +1,202 @@
+---
+title: "Assignment 4 - Iteration"
+author: "CHINONSO AYOGU"  
+format:
+  html:
+    code-fold: true 
+    embed-resources: true
+    toc: true
+    number-sections: true
+    theme: cerulean
+---
+
+
+# Goal of this assignment  
+The goal of this assignment is for you to **apply different iteration concepts** learned in class to a new data set.  
+
+In specific, you will be asked to:  
+  - create a function to automate plot creation  
+  - apply this function to different parts of a dataset through the use of the map function.  
+
+# Instructions  
+  - Move this script into the `code` subfolder of your `04_iteration` project  
+  - On this script, fill your name under the `title` section of the YAML  
+  - On this script, you will be asked to:  
+    - Import the raw soybeans data set used in the `02_wrangling` project  
+    - Create a function to automate the creation of boxplots  
+    - Create a map workflow to apply your function to different locations in the data set  
+    
+# Code  
+Hereafter is where you will develop your code.  
+Remember to load any necessary packages and the data.  
+
+```{r setup}
+#| message: false
+#| warning: false
+
+
+# Loading packages (every time you open R)
+library(readxl) # to read excel files
+library(janitor) # to clean data
+library(dplyr) # wrangling
+library(tidyr) # wrangling
+library(ggplot2)
+library(purrr)
+library(readr) # to export csv
+```
+  
+## Q1 - Create a function  
+Here, you are asked to create a function.  
+The goal of this function is to create a boxplot of K leaf concentration as a function of K rates.    
+
+```{r}
+#| message: false
+#| warning: false
+
+soybean <- read_excel("../../02_Wrangling/data/01_soybeans.xlsx")
+
+soybean_1 <- soybean %>%
+  janitor::clean_names() %>%
+    mutate(k_rate_kgha = round(k_rate_lbac * 0.454 / 0.405, 0),
+    rep = case_when(
+     plot > 100 & plot < 200 ~ 1,
+      plot > 200 & plot < 300 ~ 2,
+    plot > 300 & plot < 400 ~ 3,
+    plot > 400 & plot < 500 ~ 4)
+    )
+
+```
+
+
+Name the function `myplot`.  
+The function inputs are:  
+  - df: the data set containing the columns needed for plotting  
+  - x: the column name inside df to be plotted on the x axis  
+  - y: the column name inside df to be plotted on the y axis  
+
+
+Once you create the function, make sure it works by applying it to one of the locations where K leaf concentration was collected.  
+```{r}
+#| message: false
+#| warning: false
+
+myplot = function(data, k_rate_kgha, macon_k_pct) {
+
+  ggplot(data = as.data.frame(data),
+         aes(factor(k_rate_kgha),
+ macon_k_pct)) +
+    geom_boxplot(alpha = 0.8, outlier.shape = 21, outlier.size = 1.6) +
+    labs(x = "K leaf conc.",
+         y = "K rates (kg/ha)", title = "Box plot of K leaf conc. as a function of K rates in Macon") +
+ theme_classic() +
+ theme_bw(base_size = 10) +
+    theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+          legend.position = "top")
+  }
+
+myplot
+
+myplot(data = soybean_1, macon_k_pct = macon_k_pct, k_rate_kgha = k_rate_kgha)
+
+```
+
+
+```{r}
+soybean_2 <- soybean_1 %>%
+  pivot_longer(cols = tifton_k_pct: macon_k_pct,
+      names_to = "location_k",
+        values_to = "k_pct"
+    ) %>%
+   separate(
+       location_k,
+       into = c("location", "k", "pct"),
+       sep = "_"
+   ) %>%
+   dplyr::select(location, rep, k_rate_kgha, k_pct) %>%
+   arrange(location, k_rate_kgha, rep) # %>%
+   
+  
+
+```
+
+
+## Q2 - Iterate over locations  
+On the step above you created a function to create boxplot for one location (one column in your original data set).  
+
+Now, you are asked to apply this function to each location in the data set.  
+For that, use one of the functions in the `map` family from the purr package.  
+When making your plots, make sure to add a title to represent which location is represented in each plot.  
+
+```{r}
+#| message: false
+#| warning: false
+
+myplot = function(data, heading) {
+   ggplot(data = as.data.frame(data),
+      aes(x = factor(k_rate_kgha),
+          y = k_pct
+          )) +
+   geom_boxplot(alpha = 0.8, outlier.shape = 21, outlier.size = 1.6) +
+     labs(x = "K leaf conc.",
+         y = "K rates (kg/ha)",
+         title = heading ) +
+       theme_bw(base_size = 10) +
+       theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+       legend.position = "top"
+       )
+}
+map
+
+```
+
+```{r}
+#| message: false
+#| warning: false
+
+#Plotting by the locations/counties
+
+
+
+location_plots <- soybean_2 %>%
+  #pivot_longer(cols = tifton_k_pct: macon_k_pct) %>%
+   group_by(location) %>%
+ tidyr::nest() %>%
+ mutate(plot = map2(
+       data,
+       location,
+       ~ myplot(.x, paste("Box plot of K leaf conc. as a function of K rates; location: ", .y)
+                )
+       )
+  )
+#pivot_longer(cols = tifton_k_pct: macon_k_pct) %>%
+
+location_plots$plot
+```
+
+
+
+# Submitting your work  
+Once you have developed all the code and answers, make sure to Render this quarto file.  
+
+**Notes on rendering**:  
+
+- Make sure to render your work and inspect how the final html look like.  
+- If it does not look professional for whatever reason, then fix the issue, re-render it, recheck.  
+- Only send me your work once your html file looks professional.  
+  - **DO NOT** delete the file's heading levels (# and ##). They set up the proper heading 1 and 2 levels, and I use them to guide my grading.  
+  - If a given chunk is also outputting warnings or messages, inhibit this behavior by changing the chunk options `message` and `warning` to `FALSE` (I'll demo this in a moment).  
+  
+  - If, after rendered, 2 lines of text are connected and you wish to "break line" between them, add 2 extra spaces after the first one (I'lld demo this in a moment).  
+
+After rendering, an .html file will be created on your `code` folder.  
+
+Rename this file to `Assignment-04-iteration-LASTNAME.html`.    
+
+For ex., mine would be `Assignment-04-iteration-Bastos.html`.
+
+Submit your work by uploading the **html** file to **eLC Assignment #4 - Iteration** by Feb 23 11:59 pm.  
+  
+
+
+
+
